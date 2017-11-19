@@ -9,8 +9,8 @@ import string
 import itertools
 
 from sets import Set
-from tile import Tile, TileBag, ExchangeTileError, OutOfTilesError
-#------------------------------------------------------------------------------
+# from tile import Tile, TileBag, ExchangeTileError, OutOfTilesError
+
 # dfa = {
 #   -1:{},
 #   0:{
@@ -75,66 +75,81 @@ value_by_letter = {
     'y':4,
     'z':10
 }
-#------------------------------------------------------------------------------
+
 def calc_word_value(word):
     score = 0
     return reduce((lambda score, value: score + value),
                   [value_by_letter[l] for l in word])
-#------------------------------------------------------------------------------
-def add_word_to_dfa(dfa, word, next_state):
-    current_state = 0
-    for letter in word:
-        try:
-            state_transitions = dfa[current_state]
-        except KeyError:
-            dfa[current_state] = {}
-            dfa[current_state][letter] = next_state
-            current_state = next_state
+
+class DFA(object):
+    """The DFA used for Scrabble
+
+    The DFA is used to determine whether or not a word is legal in the game of
+    Scrabble.
+    """
+    def __init__(self):
+        self.dfa = self.build_dfa()
+
+    def build_dfa(self):
+        words_file = "words.txt"
+        dfa = {}
+        dfa[0] = {}
+        next_state = 1
+        for letter in string.ascii_lowercase:
+            dfa[0][letter] = next_state
             next_state += 1
-        else:
+
+        with open(words_file, 'r') as words:
+            for word in words:
+                dfa, next_state = self.add_word_to_dfa(dfa,
+                                                       word.strip(),
+                                                       next_state)
+        return dfa
+
+    def add_word_to_dfa(self, dfa, word, next_state):
+        current_state = 0
+        for letter in word:
             try:
-                current_state = state_transitions[letter]
+                state_transitions = dfa[current_state]
             except KeyError:
+                dfa[current_state] = {}
                 dfa[current_state][letter] = next_state
                 current_state = next_state
                 next_state += 1
-    try:
-        dfa[current_state]
-        dfa[current_state]['accept'] = True
-    except KeyError:
-        dfa[current_state] = {'accept':True}
-    return dfa, next_state
-#------------------------------------------------------------------------------
-def build_dfa():
-    words_file = ("/Users/chadlewis/Desktop/SSU/Theory of Computation"
-                 "/Projects/Final/words.txt")
-    dfa = {}
-    dfa[0] = {}
-    next_state = 1
-    for letter in string.ascii_lowercase:
-        dfa[0][letter] = next_state
-        next_state += 1
-
-    with open(words_file, 'r') as words:
-        for word in words:
-            dfa, next_state = add_word_to_dfa(dfa, word.strip(), next_state)
-    return dfa
-
-#------------------------------------------------------------------------------
-def accepts(dfa, word):
-    current_state = 0
-    for letter in word:
+            else:
+                try:
+                    current_state = state_transitions[letter]
+                except KeyError:
+                    dfa[current_state][letter] = next_state
+                    current_state = next_state
+                    next_state += 1
         try:
-            current_state = dfa[current_state][letter]
+            dfa[current_state]
+            dfa[current_state]['accept'] = True
         except KeyError:
-            return False
-    try:
-        is_accept = dfa[current_state]['accept']
-    except KeyError:
-        is_accept = False
-    finally:
-        return is_accept
-#------------------------------------------------------------------------------
+            dfa[current_state] = {'accept':True}
+        return dfa, next_state
+
+    def accepts(self, word):
+        #   Make sure the word is lowercase -- that is how the DFA is built
+        word = word.lower()
+        current_state = 0
+        for letter in word:
+            try:
+                current_state = self.dfa[current_state][letter]
+            except KeyError:
+                return False
+        try:
+            is_accept = self.dfa[current_state]['accept']
+        except KeyError:
+            is_accept = False
+        finally:
+            return is_accept
+
+#--------------------------------------------
+#   Everything below is unnecessary for the gui version of the game,
+#   but keeping in for reference when useing TileBag and things later
+
 def word_check_loop(dfa):
     word = raw_input("Enter a word to check (q to quit): ")
     while word != 'q':
@@ -144,7 +159,7 @@ def word_check_loop(dfa):
         else:
             print("{} is unacceptable.".format(word))
         word = raw_input("Enter another word to check (q to quit): ")
-#------------------------------------------------------------------------------
+
 def gen_words(dfa, rack):
     """Generate legal words
 
@@ -162,7 +177,7 @@ def gen_words(dfa, rack):
                     words.add(word)
     #   HANDLE BLANKS FOR THE LOVE OF GOD <**************************========================-------------------------
     return words
-#------------------------------------------------------------------------------
+
 def gen_words_loop(dfa):
     tbag = TileBag()
     while True:
@@ -175,11 +190,7 @@ def gen_words_loop(dfa):
             dummy = raw_input("Press any key to continue: ")
         except OutOfTilesError:
             break
-#------------------------------------------------------------------------------
-def main():
-    dfa = build_dfa()
-    gen_words_loop(dfa)
-    # word_check_loop(dfa)
-#------------------------------------------------------------------------------
-if __name__ == '__main__':
-    main()
+
+# def main():
+#     dfa = build_dfa()
+#     gen_words_loop(dfa)

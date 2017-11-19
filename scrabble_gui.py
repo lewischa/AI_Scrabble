@@ -1,6 +1,7 @@
-import ttk
+import sys
 import time
 
+import ttk
 from Tkinter import *
 from collections import namedtuple
 
@@ -203,6 +204,7 @@ class GameBoardFrame(Frame):
 
     def set_letter_played(self, row, col, letter):
         self.letters_played_in_hand[row, col] = letter
+        self.scrabble_board.set_letter(row, col, letter)
 
     def callback(self, row, col):
         # print("row: {}, col: {}".format(row, col))
@@ -435,5 +437,6 @@ class ScoreAreaFrame(Frame):
         container.pack()
         self.grid(padx=10, pady=10, row=3, rowspan=2, column=0, sticky='ns')
 
-app = ScrabbleApp()
-app.mainloop()
+def main():
+    app = ScrabbleApp()
+    app.mainloop()
