@@ -92,7 +92,7 @@ class GamePageFrame(Frame):
         Frame.__init__(self, parent, bg='#E5E6E8')
         self.configure_ui()
         self.controller = controller
-    
+
     def configure_ui(self):
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
@@ -127,24 +127,29 @@ class GamePageFrame(Frame):
         print("row: {}, col: {}".format(row, col))
         color = self.board.tile_label_by_coords[row, col].cget('bg').lower()
         # print(color)
-        if color == 'white':
-            # print("changing to blue")
+        # if color == 'white':
+        if self.board.scrabble_board.is_available(row, col):
+            #   The square at row, col is available (i.e. no tile is currently
+            #   placed there)
             letter = self.rack.get_selected_letter()
             if letter is not None:
                 self.board.tile_label_by_coords[row, col].configure(bg='blue',
                                                                     text=letter)
                 self.board.set_letter_played(row, col, letter)
                 self.rack.set_letter_played(letter)
+                self.board.scrabble_board.set_availability(row, col, False)
         else:
-            # print("changing to white")
-            # self.board.tile_label_by_coords[row, col].configure(bg='white')
+            #   The square at row, col is not available (i.e. a tile is occupying
+            #   the position)
             tile_label = self.board.scrabble_board.base_board[row][col].shorthand()
             self.board.tile_label_by_coords[row, col].configure(bg='white',
                                                                 text=tile_label)
+            self.board.scrabble_board.set_availability(row, col, True)
 
     def reset_hand(self):
         print("You reset the hand")
         letters_to_reset = []
+        print(self.board.letters_played_in_hand)
         for row_col_list, letter in self.board.letters_played_in_hand.iteritems():
             self.board_clicked(row_col_list[0], row_col_list[1])
             letters_to_reset.append(letter)
@@ -179,7 +184,7 @@ class GameBoardFrame(Frame):
                 tile.pack(side=LEFT)
                 tile.pack_propagate(False)
                 tile.update()
-                
+
                 if square.shorthand() == '  ':
                     square_text = '   '
                 else:
@@ -193,7 +198,7 @@ class GameBoardFrame(Frame):
             row_frame.pack(side=TOP)
             row_frame.update()
             self.tile_frames.append(row_frame_list)
-        
+
         self.grid(padx=10, pady=10, row=3, column=1)
 
     def set_letter_played(self, row, col, letter):
@@ -228,17 +233,17 @@ class RackFrame(Frame):
         self.letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
         self.draw_rack(self.letters)
 
-        b = ttk.Button(self, text="do it", command=self.change)
-        b.pack()
-    
-    def change(self):
-        try:
-            self.letters.pop(0)
-        except IndexError:
-            self.letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
-        finally:
-            self.draw_rack(self.letters)
-        # self.set_letters(['A', 'B'])
+    #     b = ttk.Button(self, text="do it", command=self.change)
+    #     b.pack()
+    #
+    # def change(self):
+    #     try:
+    #         self.letters.pop(0)
+    #     except IndexError:
+    #         self.letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+    #     finally:
+    #         self.draw_rack(self.letters)
+    #     # self.set_letters(['A', 'B'])
 
     def draw_rack(self, letters):
         if self.rack is not None:

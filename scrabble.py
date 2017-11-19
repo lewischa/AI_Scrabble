@@ -34,6 +34,8 @@ class ScrabbleSquare(object):
                                   or square_type == 'triple_letter')
         self.is_premium_word = (square_type == 'double_word'
                                 or square_type == 'triple_word')
+        self.available = True
+        self.permanently_available = True
 
     def is_premium_letter(self):
         return self.is_premium_word
@@ -43,6 +45,18 @@ class ScrabbleSquare(object):
 
     def get_multiplier(self):
         return self.multiplier_by_square_type[self.square_type]
+
+    def is_available(self):
+        if self.permanently_available:
+            return self.available
+        return False
+
+    def set_availability(self, availability):
+        if self.permanently_available:
+            self.available = availability
+
+    def set_permanent_availability(self, availability):
+        self.permanently_available = availability
 
     def shorthand(self):
         if self.square_type is None:
@@ -130,6 +144,26 @@ class ScrabbleBoard(object):
     def set_letter(self, row, col, letter):
         self.player_board[row][col] = letter
 
+    def is_available(self, row, col):
+        if row > 14 or col > 14:
+            return False
+        return self.base_board[row][col].is_available()
+
+    def set_availability(self, row, col, availability):
+        if row <= 14 and col <= 14:
+            self.base_board[row][col].set_availability(availability)
+
+    def permanently_place_tile(self, row, col):
+        """Permanently set tile's availability to False
+
+        This function will typically be called when a 'turn' is
+        finalized. In other words, once a tile is placed and the 'turn'
+        is done, no other tiles can be placed in that position for the
+        duration of the game.
+        """
+        if row <= 14 and col <= 14:
+            self.base_board[row][col].set_permanent_availability(False)
+
     def print_board(self):
         print "*----" * 15 + '*'
         for row in self.board:
@@ -139,5 +173,5 @@ class ScrabbleBoard(object):
                 squares_string += '|'
             print squares_string
             print "*----" * 15 + '*'
-    
+
 #------------------------------------------------------------------------------
