@@ -93,58 +93,46 @@ class DFA(object):
     def build_dfa(self):
         words_file = "words.txt"
         dfa = {}
-        dfa[0] = {}
-        next_state = 1
+        dfa[""] = {}
         for letter in string.ascii_lowercase:
-            dfa[0][letter] = next_state
-            next_state += 1
+            dfa[""][letter] = letter
 
         with open(words_file, 'r') as words:
             for word in words:
-                dfa, next_state = self.add_word_to_dfa(dfa,
-                                                       word.strip(),
-                                                       next_state)
+                dfa  = self.add_word_to_dfa(dfa, word.strip())
         return dfa
 
-    def add_word_to_dfa(self, dfa, word, next_state):
-        current_state = 0
+    def add_word_to_dfa(self, dfa, word):
+        current_state = ""
         for letter in word:
             try:
                 state_transitions = dfa[current_state]
             except KeyError:
                 dfa[current_state] = {}
-                dfa[current_state][letter] = next_state
-                current_state = next_state
-                next_state += 1
+                dfa[current_state][letter] = current_state + letter
+                current_state = current_state + letter
             else:
                 try:
                     current_state = state_transitions[letter]
                 except KeyError:
-                    dfa[current_state][letter] = next_state
-                    current_state = next_state
-                    next_state += 1
+                    dfa[current_state][letter] = current_state + letter
+                    current_state = current_state + letter
         try:
             dfa[current_state]
             dfa[current_state]['accept'] = True
         except KeyError:
             dfa[current_state] = {'accept':True}
-        return dfa, next_state
+        return dfa
 
     def accepts(self, word):
         #   Make sure the word is lowercase -- that is how the DFA is built
         word = word.lower()
-        current_state = 0
-        for letter in word:
-            try:
-                current_state = self.dfa[current_state][letter]
-            except KeyError:
-                return False
         try:
-            is_accept = self.dfa[current_state]['accept']
+	    print("Word: {}".format(word))
+            self.dfa[word]['accept']
+            return True
         except KeyError:
-            is_accept = False
-        finally:
-            return is_accept
+            return False
 
 #--------------------------------------------
 #   Everything below is unnecessary for the gui version of the game,
