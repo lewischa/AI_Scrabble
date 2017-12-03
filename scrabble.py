@@ -142,6 +142,9 @@ class ScrabbleBoard(object):
         self.base_board = self.build_board()
         self.player_board = [['' for _ in range(15)] for _ in range(15)]
         self.staged_letters_by_coord = {}
+        #   `anchor_coords` will keep track of coordinates immediately
+        #   adjacent to current tiles on the board.
+        self.anchor_coords = set()
         self.dfa = DFA()
 
     def set_letter(self, row, col, letter):
@@ -339,11 +342,70 @@ class ScrabbleBoard(object):
             print("I'm vert aligned")
             if self.is_legal_vertical_word(coords, True):
                 print("Vertical word is legal")
+                self.update_anchor_coords(coords)
+                print(self.anchor_coords)
         elif self.is_horizontally_aligned(coords):
             print "I'm horiz aligned"
             if self.is_legal_horizontal_word(coords, True):
                 print("Horizontal word is legal")
+                self.update_anchor_coords(coords)
+                print(self.anchor_coords)
 
+    def update_anchor_coords(self, coords):
+        """Help keep track of 'anchor' coordinates.
+
+        'Anchor' coordinates are those immediately adjacent to (e.g. touching)
+        coordinates with existing tiles. This helps facilitate the AI player's
+        ability to choose 'good' locations to try to place a word.
+        """
+
+        def get_adjacent_coords(coord):
+            """Get the coordinates adjacent to `coord`.
+
+            This will return a list of coordinates encircling `coord`,
+            less the coordinates that are in `coords`, have existing tiles,
+            or are not on the board.
+            """
+
+            adjacent = []
+
+            #   Only pick up the adjacent coordinates that are within bounds
+            #   of the board
+            if coord[0] != 0:
+                adjacent.append((coord[0] - 1, coord[1]))
+            if coord[0] != 14:
+                adjacent.append((coord[0] + 1, coord[1]))
+            if coord[1] != 0:
+                adjacent.append((coord[0], coord[1] - 1))
+            if coord[1] != 14:
+                adjacent.append((coord[0], coord[1] + 1))
+
+            #   Filter out the coordinates that are in `coords` or are
+            #   not available (there is already a tile there).
+            adjacent = filter(
+                lambda c:
+                    c not in coords
+                    and self.base_board[c[0]][c[1]].is_available(),
+                    adjacent)
+            return adjacent
+
+        adjacent_coords = []
+        #   Build up the adjacent coordinates
+        for coord in coords:
+            adjacent_coords += get_adjacent_coords(coord)
+
+        #   Update the `anchor_coords` set with the adjacent coordinates
+        #   we've built up
+        self.anchor_coords.update(adjacent_coords)
+
+        #   Remove each coordinate in `coords` from the `anchor_coords` set
+        #   if it exists (placing a tile at a coordinate renders that location
+        #   unusable, and thus cannot be an anchor anymore).
+        #
+        #   Unfortunately Python does not allow passing a list to set.discard(),
+        #   so we have to iterate.
+        for coord in coords:
+            self.anchor_coords.discard(coord)
 
     def is_available(self, row, col):
         if row > 14 or col > 14:
