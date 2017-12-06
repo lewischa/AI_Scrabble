@@ -6,6 +6,11 @@ File:   scrabble.py
 from tile import ScrabbleTile
 from scrabble_dfa import DFA
 
+#   Some useful 'constants'
+LITERAL_MAX_LENGTH = 15
+MAX_LENGTH = 14
+CENTER = (7,7)
+
 class ScrabbleSquare(object):
     """This class represents one square on a Scrabble game board"""
 
@@ -31,18 +36,18 @@ class ScrabbleSquare(object):
                 - None (regular square)
         """
         self.square_type = square_type
-        self.is_premium_letter = (square_type == 'double_letter'
+        self._is_premium_letter = (square_type == 'double_letter'
                                   or square_type == 'triple_letter')
-        self.is_premium_word = (square_type == 'double_word'
+        self._is_premium_word = (square_type == 'double_word'
                                 or square_type == 'triple_word')
         self.available = True
         self.permanently_available = True
 
     def is_premium_letter(self):
-        return self.is_premium_word
+        return self._is_premium_letter
 
     def is_premium_word(self):
-        return self.is_premium_letter
+        return self._is_premium_word
 
     def get_multiplier(self):
         return self.multiplier_by_square_type[self.square_type]
@@ -140,18 +145,64 @@ class ScrabbleBoard(object):
 
     def __init__(self):
         self.base_board = self.build_board()
-        self.player_board = [['' for _ in range(15)] for _ in range(15)]
+        self.player_board = [
+            [
+                '' for _ in range(LITERAL_MAX_LENGTH)
+            ] for _ in range(LITERAL_MAX_LENGTH)
+        ]
         self.staged_letters_by_coord = {}
+
         #   `anchor_coords` will keep track of coordinates immediately
-        #   adjacent to current tiles on the board.
-        self.anchor_coords = set()
+        #   adjacent to current tiles on the board. Initialize this to contain
+        #   the board's center coordinate, because the very first hand MUST
+        #   be played using this coordinate.
+        self.anchor_coords = set([CENTER])
         self.dfa = DFA()
 
     def set_letter(self, row, col, letter):
         self.player_board[row][col] = letter
         self.staged_letters_by_coord[row, col] = letter
         print(self.staged_letters_by_coord)
-        self.play_hand()
+        score = self.get_hand_legality_by_score()
+        if score:
+            print("\nLegal hand score: {}".format(score))
+        else:
+            print("\nIllegal move.")
+
+    def get_letter_score(self, row, col):
+        """Get the score of the letter placed at (row, col).
+
+        This will also take into account whether or not the letter is placed on
+        top of a double-letter or triple-letter ScrabbleSquare, in which case
+        the multiplier will only be awarded if (row, col) is in
+        self.staged_letters_by_coord (i.e. the location we're looking at is a
+        tile placed by the player in the CURRENT turn. Previous turns that
+        used a multiplier square "consume" the multiplier).
+        """
+
+        letter = self.player_board[row][col].lower()
+        base_value = ScrabbleTile(letter=letter).get_value()
+        multiplier = 1
+        if (row, col) in self.staged_letters_by_coord:
+            if self.base_board[row][col].is_premium_letter():
+                multiplier *= self.base_board[row][col].get_multiplier()
+        return base_value * multiplier
+
+    def get_word_multiplier(self, row, col):
+        """Get the word multiplier at (row, col) if there is one.
+
+        This method returns a multiplier other than 1 if, and only if,
+        (row, col) is in self.staged_letters_by_coord (it's a location the
+        player has actually placed a tile) and there is actually a word
+        multiplier square at (row, col).
+        """
+
+        if (row, col) in self.staged_letters_by_coord:
+            if self.base_board[row][col].is_premium_word():
+                multiplier = self.base_board[row][col].get_multiplier()
+                return multiplier
+        return 1
+
 
     def is_vertically_aligned(self, coords):
         """Check vertical alignment
@@ -167,7 +218,7 @@ class ScrabbleBoard(object):
             current = coords[0]
             coord_below = (current[0] + 1, current[1])
             #   Ensure we stay on the board
-            while coord_below[0] <= 14:
+            while coord_below[0] <= MAX_LENGTH:
                 row, col = current
                 if not self.player_board[row][col]:
                     #   If there's no letter at the current coordinate,
@@ -195,7 +246,7 @@ class ScrabbleBoard(object):
             current = coords[0]
             coord_right = (current[0], current[1] + 1)
             #   Ensure we stay on the board
-            while coord_right[1] <= 14:
+            while coord_right[1] <= MAX_LENGTH:
                 row, col = current
                 if not self.player_board[row][col]:
                     #   If there's no letter at the current coordinate,
@@ -212,7 +263,10 @@ class ScrabbleBoard(object):
         """Check if the vertically-played word is acceptable
 
         A word is acceptable if it is in the Scrabble dictionary,
-        determined by self.dfa
+        determined by self.dfa.
+
+        This method returns the score of the word if it's accepted, and 0
+        if not accepted.
 
         Args:
             -- coords: List of coordinates where user has placed tiles
@@ -220,6 +274,14 @@ class ScrabbleBoard(object):
                                  for legal words horizontally from
                                  current position
         """
+
+        #   Keep a running score of the word being checked
+        word_score = 0
+        #   Keep a running score of the cross-checks
+        cross_check_score = 0
+        #   Keep track of whether a tile is played on a double-word or
+        #   triple-word ScrabbleSquare
+        word_multiplier = 1
 
         vertical_word = []
         #   current represents the tile played by the user that is
@@ -248,12 +310,17 @@ class ScrabbleBoard(object):
 
         #   Again, ensure that the coordinate we're looking at stays
         #   on the board
-        while coord_below[0] <= 14:
+        while coord_below[0] <= LITERAL_MAX_LENGTH:
             row, col = current
             vertical_word.append(self.player_board[row][col])
-            if not self.player_board[coord_below[0]][coord_below[1]]:
-                #   This ensures there is a letter in the position of
-                #   coord_below. If not, break out.
+            word_score += self.get_letter_score(row, col)
+            word_multiplier *= self.get_word_multiplier(row, col)
+            try:
+                if not self.player_board[coord_below[0]][coord_below[1]]:
+                    #   This ensures there is a letter in the position of
+                    #   coord_below. If not, break out.
+                    break
+            except IndexError:
                 break
             if check_horizontal and current in coords:
                 #   If the user placed a tile at the current coordinate,
@@ -261,19 +328,58 @@ class ScrabbleBoard(object):
                 #   This is not necessary if the tile at the current
                 #   coordinate was played in a previous turn (the previous
                 #   turn already validated any words off that tile)
-                if self.is_legal_horizontal_word([current], False):
+                new_cross_check_score = self.is_legal_horizontal_word([current],
+                                                                      False)
+                if new_cross_check_score is None:
+                    #   is_legal_horizontal_word() returns None if the
+                    #   horizontal word being checked is not legal. If that
+                    #   word is not legal, the entire hand cannot be played,
+                    #   so return None.
+                    return None
+                else:
+                    #   The cross-check was completed successfully and the
+                    #   horizontal word in the cross-check is legal. Keep
+                    #   track of that word's score.
+                    cross_check_score += new_cross_check_score
                     print("Horizontal cross-check passed")
+
             current = coord_below
             coord_below = (current[0] + 1, current[1])
 
-        print("Legal vertical word: {}".format(''.join(vertical_word)))
-        return self.dfa.accepts(''.join(vertical_word))
+        #   Cross-checks are always performed the first time this method is
+        #   called. This causes a problem if there's no word formed
+        #   perpendicular to the coordinate we're currently checking, because
+        #   a cross-check could be called on a single letter, say 't', which
+        #   is not a valid Scrabble word. This if/elif block catches this issue
+        #   by only checking that `vertical_word` is acceptable if its
+        #   length is more than 1. This also prevents single-letter words
+        #   at the beginning of the game, which is an added bonus.
+        print("Vertical word: {}".format(''.join(vertical_word)))
+        if len(vertical_word) > 1:
+            if self.dfa.accepts(''.join(vertical_word)):
+                #   The word is accepted. Multiply its score by the
+                #   `word_multiplier` we've accumulated, and add the
+                #   `cross_check_score` to that product to get the final
+                #   score of the legal word plus perpendicular words formed
+                #   from it.
+                return word_score * word_multiplier + cross_check_score
+            else:
+                #   One or all of the words is illegal, so return None.
+                return None
+        elif not check_horizontal:
+            #   `check_horizontal` is False, so that means we're currently
+            #   performing a cross-check. As stated above, single-letter
+            #   cross-check words should not add value to the hand. Return 0.
+            return 0
 
     def is_legal_horizontal_word(self, coords, check_vertical):
         """Check if the horizontally-played word is acceptable
 
         A word is acceptable if it is in the Scrabble dictionary,
-        determined by self.dfa
+        determined by self.dfa.
+
+        This method returns the score of the word if it's accepted, and 0
+        if not accepted.
 
         Args:
             -- coords: List of coordinates where user has placed tiles
@@ -281,6 +387,14 @@ class ScrabbleBoard(object):
                                for legal words vertically from
                                current position
         """
+
+        #   Keep a running score of the word being checked
+        word_score = 0
+        #   Keep a running score of the cross-checks
+        cross_check_score = 0
+        #   Keep track of whether a tile is played on a double-word or
+        #   triple-word ScrabbleSquare
+        word_multiplier = 1
 
         horizontal_word = []
 
@@ -308,12 +422,17 @@ class ScrabbleBoard(object):
         coord_right = (current[0], current[1] + 1)
 
         #   Stay on the board
-        while coord_right[1] <= 14:
+        while coord_right[1] <= LITERAL_MAX_LENGTH:
             row, col = current
             horizontal_word.append(self.player_board[row][col])
-            if not self.player_board[coord_right[0]][coord_right[1]]:
-                #   This ensures there is a letter in the position of
-                #   coord_right. If not, break out.
+            word_score += self.get_letter_score(row, col)
+            word_multiplier *= self.get_word_multiplier(row, col)
+            try:
+                if not self.player_board[coord_right[0]][coord_right[1]]:
+                    #   This ensures there is a letter in the position of
+                    #   coord_right. If not, break out.
+                    break
+            except IndexError:
                 break
             if check_vertical and current in coords:
                 #   If the user placed a tile at the current coordinate,
@@ -321,35 +440,98 @@ class ScrabbleBoard(object):
                 #   This is not necessary if the tile at the current
                 #   coordinate was played in a previous turn (the previous
                 #   turn already validated any words off that tile)
-                if self.is_legal_vertical_word([current], False):
+                new_cross_check_score = self.is_legal_vertical_word([current],
+                                                                    False)
+                if new_cross_check_score is None:
+                    #   is_legal_vertical_word() returns None if the
+                    #   vertical word being checked is not legal. If that
+                    #   word is not legal, the entire hand cannot be played,
+                    #   so return None.
+                    return None
+                else:
+                    #   The cross-check was completed successfully and the
+                    #   vertical word in the cross-check is legal. Keep
+                    #   track of that word's score.
+                    cross_check_score += new_cross_check_score
                     print("Vertical cross-check passed")
             current = coord_right
             coord_right = (current[0], current[1] + 1)
 
-        print("Legal horizontal word: {}".format(''.join(horizontal_word)))
-        return self.dfa.accepts(''.join(horizontal_word))
+        print("Horizontal word: {}".format(''.join(horizontal_word)))
 
-    def play_hand(self):
+        #   Cross-checks are always performed the first time this method is
+        #   called. This causes a problem if there's no word formed
+        #   perpendicular to the coordinate we're currently checking, because
+        #   a cross-check could be called on a single letter, say 't', which
+        #   is not a valid Scrabble word. This if/elif block catches this issue
+        #   by only checking that `horizontal_word` is acceptable if its
+        #   length is more than 1. This also prevents single-letter words
+        #   at the beginning of the game, which is an added bonus.
+        if len(horizontal_word) > 1:
+            if self.dfa.accepts(''.join(horizontal_word)):
+                #   The word is accepted. Multiply its score by the
+                #   `word_multiplier` we've accumulated, and add the
+                #   `cross_check_score` to that product to get the final
+                #   score of the legal word plus perpendicular words formed
+                #   from it.
+                return word_score * word_multiplier + cross_check_score
+            else:
+                #   One or all of the words is illegal, so return None.
+                return None
+        elif not check_vertical:
+            #   `check_vertical` is False, so that means we're currently
+            #   performing a cross-check. As stated above, single-letter
+            #   cross-check words should not add value to the hand. Return 0.
+            return 0
+
+
+    def get_hand_legality_by_score(self):
+        """Returns the score of a legal hand.
+
+        This method will both check the legality of a word and return its score
+        if it's legal. If the word is illegal, this method returns 0.
+        """
+
         #   self.staged_letters_by_coord has keys in the form (row, col)
         #   pull them out --> coords: [(row, col), (row, col), ...]
         coords = [coord for coord in self.staged_letters_by_coord]
+
+        #   This check verifies that at least one of the tiles staged for
+        #   a possible hand is in `self.anchor_coords`. The rules of Scrabble
+        #   require that every word must be immediately adjacent to at least
+        #   1 tile that already exists on the board.
+        #
+        #   The first time this method is called after the game starts,
+        #   this verifies that at least one of the tiles staged has been
+        #   placed on the center square.
+        print("Checking with anchor_coords: {}".format(self.anchor_coords))
+        print("Checking with coords: {}".format(coords))
+        if not any(coord in self.anchor_coords for coord in coords):
+            return 0
         #   Sorting the coordinates makes it easier to loop through them
         #   in order, so the first coordinate would be the first letter
         #   of the consecutive letters placed by the user
         coords.sort()
-        print("in play_hand, coords: {}\n".format(coords))
         if self.is_vertically_aligned(coords):
             print("I'm vert aligned")
-            if self.is_legal_vertical_word(coords, True):
+            vertical_word_score = self.is_legal_vertical_word(coords, True)
+            if vertical_word_score:
                 print("Vertical word is legal")
+                print("Vertical word score: {}".format(vertical_word_score))
                 self.update_anchor_coords(coords)
                 print(self.anchor_coords)
+                return vertical_word_score
         elif self.is_horizontally_aligned(coords):
             print "I'm horiz aligned"
-            if self.is_legal_horizontal_word(coords, True):
+            horizontal_word_score = self.is_legal_horizontal_word(coords, True)
+            if horizontal_word_score:
                 print("Horizontal word is legal")
+                print("Horizontal word score: {}".format(horizontal_word_score))
                 self.update_anchor_coords(coords)
                 print(self.anchor_coords)
+                return horizontal_word_score
+        #   Word is not legal. Return 0.
+        return 0
 
     def update_anchor_coords(self, coords):
         """Help keep track of 'anchor' coordinates.
@@ -373,11 +555,11 @@ class ScrabbleBoard(object):
             #   of the board
             if coord[0] != 0:
                 adjacent.append((coord[0] - 1, coord[1]))
-            if coord[0] != 14:
+            if coord[0] != MAX_LENGTH:
                 adjacent.append((coord[0] + 1, coord[1]))
             if coord[1] != 0:
                 adjacent.append((coord[0], coord[1] - 1))
-            if coord[1] != 14:
+            if coord[1] != MAX_LENGTH:
                 adjacent.append((coord[0], coord[1] + 1))
 
             #   Filter out the coordinates that are in `coords` or are
@@ -408,12 +590,12 @@ class ScrabbleBoard(object):
             self.anchor_coords.discard(coord)
 
     def is_available(self, row, col):
-        if row > 14 or col > 14:
+        if row > MAX_LENGTH or col > MAX_LENGTH:
             return False
         return self.base_board[row][col].is_available()
 
     def set_availability(self, row, col, availability):
-        if row <= 14 and col <= 14:
+        if row <= MAX_LENGTH and col <= MAX_LENGTH:
             self.base_board[row][col].set_availability(availability)
 
     def permanently_place_tile(self, row, col):
@@ -424,5 +606,5 @@ class ScrabbleBoard(object):
         is done, no other tiles can be placed in that position for the
         duration of the game.
         """
-        if row <= 14 and col <= 14:
+        if row <= MAX_LENGTH and col <= MAX_LENGTH:
             self.base_board[row][col].set_permanent_availability(False)
