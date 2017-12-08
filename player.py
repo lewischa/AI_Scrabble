@@ -14,10 +14,13 @@ class Player(object):
             #       played on coordinates (7,7) and (7,8).
             #
             #   Then pass the letters_by_coord dictionary to super:
-            super(<AI class name>, self).play_hand(letters_by_coord)
+            super(<AI class name>, self).play_hand(
+                {'letters_by_coord': letters_by_coord})
 
     Calling super like this will handle all the already-implemented logic
-    to actually place the tiles on the board.
+    to actually place the tiles on the board. It passes a dictionary
+    {'letters_by_coord': letters_by_coord} because the super method uses
+    **kwargs for keyword arguments, and expects 'letters_by_coord' to exist.
     """
 
     def __init__(self, board, tile_bag):
@@ -33,9 +36,13 @@ class Player(object):
         return self.score
 
     def draw_tiles(self, amount):
+        """Draw `amount` tiles from the tile bag."""
+
         self.tiles += self.tile_bag.draw_tiles(amount)
 
     def increment_score(self, score):
+        """Increase the score."""
+
         self.score += score
 
     def release_and_draw_tiles(self, letters):
@@ -62,4 +69,6 @@ class Player(object):
         return score, [tile.get_letter() for tile in self.tiles]
 
     def get_letters(self):
+        """Return a list of letters that the player holds."""
+        
         return [tile.get_letter() for tile in self.tiles]
