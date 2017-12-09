@@ -1,31 +1,59 @@
-from collections import namedtuple
-
-#   value_by_letter is the value of a Scrabble tile based on its letter.
-#   This is already defined in tile.py, no need to redefine it here.
-from tile import value_by_letter
-
-Coordinate = namedtuple('Coordinate', 'row, col')
-
 class Word:
-    """A relatively dumb property bag for a word.
+    """A logically dumb property bag for a word.
 
     This class can be used to hold useful information about a word that
-    could potentially be used on a Scrabble board.
+    could potentially be used on a Scrabble board. Operator overloads are also
+    provided for easy comparison between two word objects, based on each
+    object's score.
     """
 
-    def __init__(self, word, orientation, coordinate):
-        self.word_str = word.lower()
-        self.score = self._calculate_score()
-        self.orientation = orientation
+    def __init__(self, word, letters_by_coord, score):
+        self.word = word
+        self.letters_by_coord = letters_by_coord
+        self.score = score
 
-        #   NOTE: `coordinate` should be passed in as a tuple, in the form of
-        #           (row, col)
-        self.coordinate = Coordinate(row=coordinate[0], col=coordinate[1])
+    def get_word(self):
+        return self.word
 
-    def _calculate_score(self):
-        """Calculate the score of a word based only on its letters."""
+    def get_letters_by_coord(self):
+        return self.letters_by_coord
 
-        score = 0
-        for letter in self.word_str:
-            score += value_by_letter[letter]
-        return score
+    def get_score(self):
+        return self.score
+
+    #   Built-in method overrides and operator overloads
+
+    def __str__(self):
+        """Built-in override for print() method."""
+
+        return "Word: {}, score: {}".format(self.word, self.score)
+
+    def __lt__(self, other_word):
+        """self < other_word"""
+
+        return self.score < other_word.get_score()
+
+    def __le__(self, other_word):
+        """self <= other_word"""
+
+        return self.score <= other_word.get_score()
+
+    def __ne__(self, other_word):
+        """self != other_word"""
+
+        return self.score != other_word.get_score()
+
+    def __eq__(self, other_word):
+        """self == other_word"""
+
+        return self.score == other_word.get_score()
+
+    def __ge__(self, other_word):
+        """self >= other_word"""
+
+        return self.score >= other_word.get_score()
+
+    def __gt__(self, other_word):
+        """self > other_word"""
+
+        return self.score > other_word.get_score()
