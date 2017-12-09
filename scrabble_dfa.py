@@ -1,51 +1,7 @@
-"""
-Author:         Chad Lewis
-Assignment:     Final Project, Question 3: Scrabble
-Class:          CS 454 - Theory of Computation
-Date:           Fall 2017
-"""
-
 import string
 import itertools
 
 from sets import Set
-# from tile import Tile, TileBag, ExchangeTileError, OutOfTilesError
-
-# dfa = {
-#   -1:{},
-#   0:{
-#       'a':1,
-#       'b':2,
-#       'c':3,
-#       'd':4,
-#       'e':5,
-#       'f':6,
-#       'g':7,
-#       'h':8,
-#       'i':9,
-#       'j':10,
-#       'k':11,
-#       'l':12,
-#       'm':13,
-#       'n':14,
-#       'o':15,
-#       'p':16,
-#       'q':17,
-#       'r':18,
-#       's':19,
-#       't':20,
-#       'u':21,
-#       'v':22,
-#       'w':23,
-#       'x':24,
-#       'y':25,
-#       'z':26,
-#       'accept':False
-#   },
-#   1:{
-
-#   }
-# }
 
 value_by_letter = {
     'a':1,
@@ -127,58 +83,7 @@ class DFA(object):
     def accepts(self, word):
         #   Make sure the word is lowercase -- that is how the DFA is built
         word = word.lower()
-        try:
-	    print("Word: {}".format(word))
-            self.dfa[word]['accept']
-            return True
-        except KeyError:
-            return False
-
-#--------------------------------------------
-#   Everything below is unnecessary for the gui version of the game,
-#   but keeping in for reference when useing TileBag and things later
-
-def word_check_loop(dfa):
-    word = raw_input("Enter a word to check (q to quit): ")
-    while word != 'q':
-        if accepts(dfa, word):
-            print("{} is acceptable.".format(word))
-            print("Score would be: {}".format(calc_word_value(word)))
-        else:
-            print("{} is unacceptable.".format(word))
-        word = raw_input("Enter another word to check (q to quit): ")
-
-def gen_words(dfa, rack):
-    """Generate legal words
-
-    Generate all legal words that can be formed from the letters in the
-    'rack' such that all words begin with the letter located at
-    'rack[idx]'.
-    """
-    words = Set()
-    letters = ''.join([rack[i].get_letter() for i in range(len(rack))])
-    for i in range(2, len(rack) + 1):
-        for word in itertools.imap(''.join, itertools.product(letters,
-                                                              repeat=i)):
-            if word not in words:
-                if accepts(dfa, word):
-                    words.add(word)
-    #   HANDLE BLANKS FOR THE LOVE OF GOD <**************************========================-------------------------
-    return words
-
-def gen_words_loop(dfa):
-    tbag = TileBag()
-    while True:
-        try:
-            rack = tbag.draw_tiles(7)
-            letters = ''.join([rack[i].get_letter() for i in range(len(rack))])
-            print("Current letters: '{}'".format(letters))
-            words = gen_words(dfa, rack)
-            print("{} words were legally generated!".format(len(words)))
-            dummy = raw_input("Press any key to continue: ")
-        except OutOfTilesError:
-            break
-
-# def main():
-#     dfa = build_dfa()
-#     gen_words_loop(dfa)
+        print("Word: {}".format(word))
+        if word in self.dfa:
+            return 'accept' in self.dfa[word]
+        return False
