@@ -36,11 +36,11 @@ value_by_letter = {
 }
 
 num_tiles_by_letter = {
-    'a':9,
+    'a':10,
     'b':2,
     'c':2,
     'd':4,
-    'e':12,
+    'e':13,
     'f':2,
     'g':3,
     'h':2,
@@ -62,7 +62,7 @@ num_tiles_by_letter = {
     'x':1,
     'y':2,
     'z':1,
-    ' ':2
+    ' ':0   # Blank tiles will not be used.
 }
 
 class ExchangeTileError(ValueError):
@@ -119,12 +119,12 @@ class ScrabbleTileBag(object):
 
 class ScrabbleTile(object):
     """Represents a Scrabble tile
-       
+
     Tile is a class representing a Scrabble tile with very limited
     functionality, i.e. getting the value of and/or the letter on
     the tile.
     """
-    
+
     def __init__(self, letter=None):
         self.letter = letter
         self.value = value_by_letter[letter]

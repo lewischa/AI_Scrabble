@@ -6,9 +6,13 @@ from Tkinter import *
 from collections import namedtuple
 
 from scrabble import ScrabbleBoard
+from tile import ScrabbleTileBag
+from player import Player
 
 SCORE_AREA_FONT = ("Verdana", 14, "bold")
 CLICK_CURSOR = "hand2"
+INVALID_COLOR = "#ff0000"
+VALID_COLOR = "#009300"
 
 class ScrabbleApp(Tk):
 
@@ -114,21 +118,29 @@ class GamePageFrame(Frame):
 
         self.score_area = ScoreAreaFrame(self, width=100, height=400, bg='blue')
 
-        self.rack = RackFrame(self, width=400, height=100, bg='blue')
+        self.rack = RackFrame(self, self.board.human.get_letters(),
+                              width=400, height=100, bg='blue')
 
         self.status_bar_frame = Label(self, bg='#F0F1F2', relief=SUNKEN)
         self.status_bar_frame.grid(row=5, column=0, columnspan=3, sticky='ew')
 
-        self.status_bar = Label(self.status_bar_frame, text="This is a status", bg='#F0F1F2')
+        self.status_bar = Label(self.status_bar_frame, bg='#F0F1F2')
         self.status_bar.pack(side=LEFT)
 
         self.control_area = ControlAreaFrame(self, width=100, height=400, bg='blue')
 
+    def set_word_status(self, score=0, reset=False):
+        if reset:
+            self.status_bar.config(text="")
+        elif score:
+            self.status_bar.config(
+                text="Valid word. Value is: {}".format(score), fg=VALID_COLOR)
+        else:
+            self.status_bar.config(
+                text="Invalid word.", fg=INVALID_COLOR)
+
     def board_clicked(self, row, col):
-        print("row: {}, col: {}".format(row, col))
         color = self.board.tile_label_by_coords[row, col].cget('bg').lower()
-        # print(color)
-        # if color == 'white':
         if self.board.scrabble_board.is_available(row, col):
             #   The square at row, col is available (i.e. no tile is currently
             #   placed there)
@@ -137,25 +149,68 @@ class GamePageFrame(Frame):
                 self.board.tile_label_by_coords[row, col].configure(bg='blue',
                                                                     text=letter)
                 self.board.set_letter_played(row, col, letter)
+                letters_by_coord = {
+                    coord: letter.lower()
+                    for coord, letter
+                    in self.board.letters_played_in_hand.iteritems()
+                }
+                score = self.board.scrabble_board.get_hand_legality_by_score(
+                            letters_by_coord)
+                self.set_word_status(score)
                 self.rack.set_letter_played(letter)
                 self.board.scrabble_board.set_availability(row, col, False)
-        else:
+        elif not self.board.scrabble_board.is_played(row, col):
             #   The square at row, col is not available (i.e. a tile is occupying
-            #   the position)
+            #   the position), but it's part of the current hand and hasn't
+            #   been 'played' yet.
             tile_label = self.board.scrabble_board.base_board[row][col].shorthand()
             self.board.tile_label_by_coords[row, col].configure(bg='white',
                                                                 text=tile_label)
             self.board.scrabble_board.set_availability(row, col, True)
+            removed_letter = self.board.letters_played_in_hand[row, col]
+            self.board.remove_letter_at_coord(row, col)
+            letters_by_coord = {
+                coord: letter.lower()
+                for coord, letter
+                in self.board.letters_played_in_hand.iteritems()
+            }
+            score = self.board.scrabble_board.get_hand_legality_by_score(
+                        letters_by_coord)
+            self.set_word_status(score)
+            self.rack.return_letter(removed_letter)
+
+    def human_play_hand(self):
+        letters_by_coord = self.board.get_letters_by_coord()
+        letters_by_coord = {
+            coord: letter.lower()
+            for coord, letter in letters_by_coord.iteritems()
+        }
+        score, letters = self.board.human.play_hand(
+                            letters_by_coord=letters_by_coord)
+        if not score:
+            self.reset_hand()
+        else:
+            self.score_area.set_human_score(self.board.human.get_score())
+            self.set_word_status(reset=True)
+            self.board.reset_letters_played()
+            self.rack.reset_letters(letters)
+            self.rack.draw_rack(letters)
+        print("Score: {}".format(score))
 
     def reset_hand(self):
         print("You reset the hand")
         letters_to_reset = []
+        coords_to_reset = []
         print(self.board.letters_played_in_hand)
-        for row_col_list, letter in self.board.letters_played_in_hand.iteritems():
-            self.board_clicked(row_col_list[0], row_col_list[1])
+        for (row, col), letter in self.board.letters_played_in_hand.iteritems():
+            coords_to_reset.append((row, col))
+            # self.board_clicked(row_col_list[0], row_col_list[1])
             letters_to_reset.append(letter)
-        self.rack.reset_hand(letters_to_reset)
-        self.board.letters_played_in_hand = {}
+        for coord in coords_to_reset:
+            self.board_clicked(coord[0], coord[1])
+        # self.rack.reset_hand(letters_to_reset)
+        self.board.reset_letters_played()
+        self.set_word_status(reset=True)
 
 
 class GameBoardFrame(Frame):
@@ -167,6 +222,8 @@ class GameBoardFrame(Frame):
         self.cols = 15
         self.board_width = kwargs['width']
         self.scrabble_board = ScrabbleBoard()
+        self.tile_bag = ScrabbleTileBag()
+        self.human = Player(self.scrabble_board, self.tile_bag)
         self.tile_frames = []
         self.tile_label_by_coords = {}
         self.letters_played_in_hand = {}
@@ -206,6 +263,15 @@ class GameBoardFrame(Frame):
         self.letters_played_in_hand[row, col] = letter
         self.scrabble_board.set_letter(row, col, letter)
 
+    def reset_letters_played(self):
+        self.letters_played_in_hand = {}
+
+    def get_letters_by_coord(self):
+        return self.letters_played_in_hand
+
+    def remove_letter_at_coord(self, row, col):
+        del self.letters_played_in_hand[row, col]
+
     def callback(self, row, col):
         # print("row: {}, col: {}".format(row, col))
         # color = self.tile_label_by_coords[row, col].cget('bg').lower()
@@ -221,8 +287,9 @@ class GameBoardFrame(Frame):
 
 class RackFrame(Frame):
 
-    def __init__(self, *args, **kwargs):
-        Frame.__init__(self, *args, **kwargs)
+    def __init__(self, parent, letters, **kwargs):
+        Frame.__init__(self, parent, **kwargs)
+        self.letters = letters
         self.width = kwargs['width']
         self.grid(padx=10, pady=10, row=4, column=1, sticky='nesw')
         self.pack_propagate(False)
@@ -232,7 +299,7 @@ class RackFrame(Frame):
 
         self.rack = None
 
-        self.letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+        # self.letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
         self.draw_rack(self.letters)
 
     #     b = ttk.Button(self, text="do it", command=self.change)
@@ -248,17 +315,24 @@ class RackFrame(Frame):
     #     # self.set_letters(['A', 'B'])
 
     def draw_rack(self, letters):
+        letters = [letter.upper() for letter in letters]
         if self.rack is not None:
             self.rack.destroy()
             self.rack = None
-        self.rack = Canvas(self, bg='white', width=300, height=50, borderwidth=0, highlightthickness=0)
+        self.rack = Canvas(self, bg='white', width=300,
+                           height=50, borderwidth=0, highlightthickness=0)
         self.rack.pack(side=BOTTOM, pady=(0, 5))
         self.rack_tiles = {}
         self.selected_tile = None
 
-        self.set_letters(letters)
+        self.draw_letters(letters)
 
-    def set_letters(self, letters):
+    def reset_letters(self, letters):
+        self.letters = letters
+
+    def draw_letters(self, letters):
+        print("Drawing letters: {}".format(letters))
+        print("self.letters: {}".format(self.letters))
         #   Leftmost start position: 17
         #   Rightmost start position: 287
         Dimension = namedtuple('Dimension', 'box_size offset')
@@ -283,10 +357,6 @@ class RackFrame(Frame):
                             ("Verdana", FONT_SIZE))
 
     def select_tile(self, event, tile, letter):
-        print("self: {}".format(self))
-        print("event: {}".format(event))
-        print("tile: {}".format(tile))
-        print("letter: {}".format(letter))
         if self.rack_tiles[tile]['selected']:
             self.rack.itemconfigure(tile, fill="blue", outline="black", width=1)
             self.rack_tiles[tile]['selected'] = False
@@ -296,7 +366,8 @@ class RackFrame(Frame):
             self.rack.itemconfigure(tile, fill="white", outline="blue", width=3)
             self.rack_tiles[tile]['selected'] = True
             if self.selected_tile is not None:
-                self.rack.itemconfigure(self.selected_tile, fill="blue", outline="black", width=1)
+                self.rack.itemconfigure(self.selected_tile,
+                                        fill="blue", outline="black", width=1)
                 self.rack_tiles[self.selected_tile]['selected'] = False
             self.selected_tile = tile
             self.selected_letter = letter
@@ -306,11 +377,20 @@ class RackFrame(Frame):
 
     def set_letter_played(self, letter):
         self.select_tile(self, self.selected_tile, letter)
-        self.letters.remove(letter)
+        print("self.letters before removal: {}".format(self.letters))
+        self.letters.remove(letter.lower())
+        print("self.letters after removal: {}".format(self.letters))
         self.draw_rack(self.letters)
 
     def reset_hand(self, letters):
+        letters = [letter.lower() for letter in letters]
+        print("self.letters before reset: {}".format(self.letters))
         self.letters = self.letters + letters
+        print("self.letters after reset: {}".format(self.letters))
+        self.draw_rack(self.letters)
+
+    def return_letter(self, removed_letter):
+        self.letters += [removed_letter.lower()]
         self.draw_rack(self.letters)
 
 
@@ -389,6 +469,12 @@ class ControlAreaFrame(Frame):
                                        cursor=CLICK_CURSOR)
         reset_hand_button.grid(pady=25, row=0)
 
+        play_hand_button = ttk.Button(self,
+                                      text="Play Hand",
+                                      command=parent.human_play_hand,
+                                      cursor=CLICK_CURSOR)
+        play_hand_button.grid(pady=25, row=1)
+
         self.grid(padx=10, pady=10, row=3, rowspan=2, column=2, sticky='ns')
 
     # def toggle_reset_hand_button(self):
@@ -414,12 +500,12 @@ class ScoreAreaFrame(Frame):
                                     fg='white',
                                     font=SCORE_AREA_FONT)
         player1_score_label.grid(row=1, column=1, sticky='e')
-        player1_score = Label(container,
-                              text="300",
-                              bg='blue',
-                              fg='white',
-                              font=SCORE_AREA_FONT)
-        player1_score.grid(row=1, column=2)
+        self.player1_score = Label(container,
+                                   text="0",
+                                   bg='blue',
+                                   fg='white',
+                                   font=SCORE_AREA_FONT)
+        self.player1_score.grid(row=1, column=2)
 
         player2_score_label = Label(container,
                                     text="Computer: ",
@@ -427,15 +513,21 @@ class ScoreAreaFrame(Frame):
                                     fg='white',
                                     font=SCORE_AREA_FONT)
         player2_score_label.grid(row=2, column=1, sticky='e')
-        player2_score = Label(container,
-                              text="377",
-                              bg='blue',
-                              fg='white',
-                              font=SCORE_AREA_FONT)
-        player2_score.grid(row=2, column=2)
+        self.player2_score = Label(container,
+                                   text="377",
+                                   bg='blue',
+                                   fg='white',
+                                   font=SCORE_AREA_FONT)
+        self.player2_score.grid(row=2, column=2)
 
         container.pack()
         self.grid(padx=10, pady=10, row=3, rowspan=2, column=0, sticky='ns')
+
+    def set_human_score(self, score):
+        self.player1_score.config(text=score)
+
+    def set_ai_score(self, score):
+        self.player2_score.config(text=score)
 
 def main():
     app = ScrabbleApp()
