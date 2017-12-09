@@ -42,7 +42,8 @@ class ScrabbleApp(Tk):
         file_menu = Menu(main_menu)
         main_menu.add_cascade(label="File", menu=file_menu)
 
-        file_menu.add_cascade(label="Reset", command=lambda: self.remove_status(self))
+        file_menu.add_cascade(label="Reset",
+                              command=lambda: self.remove_status(self))
         file_menu.add_separator()
         file_menu.add_cascade(label="Quit", command=self.quit)
 
@@ -81,7 +82,8 @@ class WelcomePage(Frame):
 
         start_button = ttk.Button(self,
                                   text="Play",
-                                  command=lambda: controller.show_frame(GamePageFrame),
+                                  command=lambda: \
+                                    controller.show_frame(GamePageFrame),
                                   cursor=CLICK_CURSOR)
         start_button.pack()
 
@@ -106,7 +108,8 @@ class GamePageFrame(Frame):
 
         back_button = ttk.Button(self,
                                  text="Back to Home",
-                                 command=lambda: self.controller.show_frame(WelcomePage))
+                                 command=lambda: \
+                                    self.controller.show_frame(WelcomePage))
         back_button.grid(row=1, column=0, columnspan=3)
 
         quit_button = ttk.Button(self, text="Quit", command=self.quit)
@@ -127,7 +130,8 @@ class GamePageFrame(Frame):
         self.status_bar = Label(self.status_bar_frame, bg='#F0F1F2')
         self.status_bar.pack(side=LEFT)
 
-        self.control_area = ControlAreaFrame(self, width=100, height=400, bg='blue')
+        self.control_area = ControlAreaFrame(self, width=100,
+                                             height=400, bg='blue')
 
     def set_word_status(self, score=0, reset=False):
         if reset:
@@ -248,7 +252,9 @@ class GameBoardFrame(Frame):
                 else:
                     square_text = square.shorthand()
                 label = Label(tile, text=square_text)
-                label.bind("<Button-1>", lambda e, x=col_pos, y=row_pos: self.parent.board_clicked(y, x))
+                label.bind("<Button-1>",
+                           lambda e, x=col_pos, y=row_pos: \
+                                self.parent.board_clicked(y, x))
                 label.pack(fill=BOTH, expand=True)
                 label.update()
                 self.tile_label_by_coords[row_pos, col_pos] = label
@@ -294,7 +300,8 @@ class RackFrame(Frame):
         self.grid(padx=10, pady=10, row=4, column=1, sticky='nesw')
         self.pack_propagate(False)
 
-        rack_title = Label(self, text="Your Letters", fg='white', bg='blue', font=SCORE_AREA_FONT)
+        rack_title = Label(self, text="Your Letters", fg='white',
+                           bg='blue', font=SCORE_AREA_FONT)
         rack_title.pack(side=TOP)
 
         self.rack = None
@@ -421,19 +428,21 @@ class RackTile(Canvas):
                                                 font=self.font)
         temp_box = self.parent.bbox(canvas_letter)
         final_box = self.get_box_size(temp_box)
-        outline = self.parent.create_rectangle(final_box, outline="black", fill="blue")
+        outline = self.parent.create_rectangle(final_box,
+                                               outline="black",
+                                               fill="blue")
 
-        self.parent.tag_bind(outline,
-                             "<ButtonPress-1>",
-                             lambda e, box=outline, letter=self.letter: self.controller.select_tile(self,
-                                                                                                    box,
-                                                                                                    letter))
+        self.parent.tag_bind(outline, "<ButtonPress-1>",
+                             lambda e, box=outline, letter=self.letter: \
+                                self.controller.select_tile(self,
+                                                            box,
+                                                            letter))
         self.controller.rack_tiles[outline] = {'selected':False}
-        self.parent.tag_bind(canvas_letter,
-                             "<ButtonPress-1>",
-                             lambda e, box=outline, letter=self.letter: self.controller.select_tile(self,
-                                                                                                    box,
-                                                                                                    letter))
+        self.parent.tag_bind(canvas_letter, "<ButtonPress-1>",
+                             lambda e, box=outline, letter=self.letter: \
+                                self.controller.select_tile(self,
+                                                            box,
+                                                            letter))
         self.parent.tag_raise(canvas_letter, outline)
 
     def get_box_size(self, box):

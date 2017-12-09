@@ -11,7 +11,7 @@ from collections import namedtuple
 
 class ScrabbleAI(object):
     """This is the AI Class portion of scrabble
-    
+
     This will be used to create AI responses to words played
     """
     def __init__(self, dfa, threshold):
@@ -21,7 +21,7 @@ class ScrabbleAI(object):
     def find_acceptable_word(self, board, letters):
         """ This functions job is to find an accepting word
         This will be done by looping through all of the coordinates
-        that exist in anchor coordinates until a word is found that 
+        that exist in anchor coordinates until a word is found that
         beats the threshold
         """
         best_score = 0
@@ -40,9 +40,9 @@ class ScrabbleAI(object):
                     print("New vertical word, {}, is better than old word, {}.".format(word, best_word))
                     best_score = score
                     best_word = word
-                
+
         print("Best word in find_acceptable_words is: {}, with a score: {}".format(best_word, best_score))
-        return ""   
+        return ""
     def find_words_for_anchor(self, coord, board, letters):
         """ This function finds an acceptable/optimal word for an anchor
         This will be done by trying all of the words that can come out of it
@@ -121,7 +121,7 @@ class ScrabbleAI(object):
         run into
         """
         #check that letter in letters plus state is in DFA
-        #check that if there is a contiguous block up or down, or both, 
+        #check that if there is a contiguous block up or down, or both,
         #the created string is accepted in dfa then check if there is a contiguous
         #block to the right, if so check that state + letter + contiguous block exist
         #in the DFA, if they do and it is accepting, then if the score is greater
@@ -173,7 +173,7 @@ class ScrabbleAI(object):
             slice_except += 1
         return (best_word, best_score)
 
-    def get_word_down(self, row, col, board, letters, state, letters_by_coords, end_row):    
+    def get_word_down(self, row, col, board, letters, state, letters_by_coords, end_row):
         """ This function finds a word below a coordinate
         This is done through depth first DFA search with checks at every point
         """
@@ -228,7 +228,7 @@ class ScrabbleAI(object):
         return ""
 
     def get_word_up(self, row, col, board, letters, state, letters_by_coords):
-        """ This function finds a word below a coordinate 
+        """ This function finds a word below a coordinate
         This is done by iterating in reverse regarding the length of the word
         with the destination being the anchor point and then a DFA search
         """
