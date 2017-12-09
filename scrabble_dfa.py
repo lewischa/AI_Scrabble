@@ -1,7 +1,4 @@
 import string
-import itertools
-
-from sets import Set
 
 value_by_letter = {
     'a':1,
