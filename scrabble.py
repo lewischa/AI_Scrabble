@@ -5,7 +5,7 @@ File:   scrabble.py
 
 from tile import ScrabbleTile
 from scrabble_dfa import DFA
-
+import scrabble_ai
 #   Some useful 'constants'
 LITERAL_MAX_LENGTH = 15
 MAX_LENGTH = 14
@@ -162,6 +162,7 @@ class ScrabbleBoard(object):
         #   be played using this coordinate.
         self.anchor_coords = set([CENTER])
         self.dfa = DFA()
+        self.scrabble_ai = scrabble_ai.ScrabbleAI(self.dfa, 30)
 
     def set_letter(self, row, col, letter):
         # self.player_board[row][col] = letter
@@ -331,7 +332,7 @@ class ScrabbleBoard(object):
 
         #   Again, ensure that the coordinate we're looking at stays
         #   on the board
-        while coord_below[0] <= LITERAL_MAX_LENGTH:
+        while coord_below[0] <= MAX_LENGTH:
             row, col = current
             vertical_word.append(
                 self.get_letter_at_coord(row, col, letters_by_coord))
@@ -452,8 +453,10 @@ class ScrabbleBoard(object):
         coord_right = (current[0], current[1] + 1)
 
         #   Stay on the board
-        while coord_right[1] <= LITERAL_MAX_LENGTH:
+        while coord_right[1] <= MAX_LENGTH:
             row, col = current
+            word = ''
+            score = 0
             horizontal_word.append(
                 self.get_letter_at_coord(row, col, letters_by_coord))
             word_score += self.get_letter_score(row, col, letters_by_coord)
@@ -532,8 +535,10 @@ class ScrabbleBoard(object):
 
         #   letters_by_coord has keys in the form (row, col)
         #   pull them out --> coords: [(row, col), (row, col), ...]
+        if len(letters_by_coord) == 0:
+            return 0
         coords = [coord for coord in letters_by_coord]
-
+        
         #   This check verifies that at least one of the tiles staged for
         #   a possible hand is in `self.anchor_coords`. The rules of Scrabble
         #   require that every word must be immediately adjacent to at least
@@ -570,7 +575,7 @@ class ScrabbleBoard(object):
                 self.permanently_place_tile(row, col)
             coords = [coord for coord in letters_by_coord]
             self.update_anchor_coords(coords)
-
+            self.scrabble_ai.find_acceptable_word(self, ['f', 'a', 'c', 'e', 't', 'r', 'l'])
         return score
 
     def update_anchor_coords(self, coords):
@@ -653,3 +658,4 @@ class ScrabbleBoard(object):
         """
         if row <= MAX_LENGTH and col <= MAX_LENGTH:
             self.base_board[row][col].set_is_played()
+            
