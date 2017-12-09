@@ -32,11 +32,6 @@ value_by_letter = {
     'z':10
 }
 
-def calc_word_value(word):
-    score = 0
-    return reduce((lambda score, value: score + value),
-                  [value_by_letter[l] for l in word])
-
 class DFA(object):
     """The DFA used for Scrabble
 
