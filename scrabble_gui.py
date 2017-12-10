@@ -8,7 +8,7 @@ from collections import namedtuple
 from scrabble import ScrabbleBoard
 from tile import ScrabbleTileBag
 from player import Player
-
+from scrabble_ai import ScrabbleAI
 SCORE_AREA_FONT = ("Verdana", 14, "bold")
 CLICK_CURSOR = "hand2"
 INVALID_COLOR = "#ff0000"
@@ -228,6 +228,7 @@ class GameBoardFrame(Frame):
         self.scrabble_board = ScrabbleBoard()
         self.tile_bag = ScrabbleTileBag()
         self.human = Player(self.scrabble_board, self.tile_bag)
+        self.scrabble_ai = ScrabbleAI(self.scrabble_board, self.tile_bag, self.scrabble_board.dfa, 20)
         self.tile_frames = []
         self.tile_label_by_coords = {}
         self.letters_played_in_hand = {}
