@@ -75,7 +75,7 @@ class DFA(object):
     def accepts(self, word):
         #   Make sure the word is lowercase -- that is how the DFA is built
         word = word.lower()
-        print("Word: {}".format(word))
+        # print("Word: {}".format(word))
         if word in self.dfa:
             return 'accept' in self.dfa[word]
         return False

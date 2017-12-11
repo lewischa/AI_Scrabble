@@ -8,7 +8,7 @@ from collections import namedtuple
 from scrabble import ScrabbleBoard
 from tile import ScrabbleTileBag
 from player import Player
-
+from scrabble_ai import ScrabbleAI
 SCORE_AREA_FONT = ("Verdana", 14, "bold")
 CLICK_CURSOR = "hand2"
 INVALID_COLOR = "#ff0000"
@@ -249,6 +249,17 @@ class GamePageFrame(Frame):
             self.set_word_status(score)
             self.rack.return_letter(removed_letter)
 
+    def place_word(self, letters_by_coord):
+        for key, value in letters_by_coord.iteritems():
+            row, col = key
+            color = self.board.tile_label_by_coords[row, col].cget('bg').lower()
+            self.board.tile_label_by_coords[row, col].configure(bg='blue',
+                                                                text=value.upper())
+            # self.board.set_letter_played(row, col, value.upper())
+            # self.board.scrabble_board.set_availability(row, col, False)
+        print("Playing hand with letters_by_coord: {}".format(letters_by_coord))
+        self.board.scrabble_board.play_hand(letters_by_coord)
+
     def human_play_hand(self):
         letters_by_coord = self.board.get_letters_by_coord()
         letters_by_coord = {
@@ -265,7 +276,11 @@ class GamePageFrame(Frame):
             self.board.reset_letters_played()
             self.rack.reset_letters(letters)
             self.rack.draw_rack(letters)
-        print("Score: {}".format(score))
+	    word = self.board.scrabble_ai.play_hand()
+            # self.board.scrabble_board.play_hand(word.get_letters_by_coord())
+            self.place_word(word.get_letters_by_coord())
+            self.score_area.set_ai_score(self.board.scrabble_ai.get_score())
+            print("Score: {}".format(score))
 
     def reset_hand(self):
         print("You reset the hand")
@@ -294,6 +309,7 @@ class GameBoardFrame(Frame):
         self.scrabble_board = ScrabbleBoard()
         self.tile_bag = ScrabbleTileBag()
         self.human = Player(self.scrabble_board, self.tile_bag)
+        self.scrabble_ai = ScrabbleAI(self.scrabble_board, self.tile_bag, self.scrabble_board.dfa, 20)
         self.tile_frames = []
         self.tile_label_by_coords = {}
         self.letters_played_in_hand = {}
@@ -332,6 +348,7 @@ class GameBoardFrame(Frame):
         self.grid(padx=10, pady=10, row=3, column=1)
 
     def set_threshold(self, threshold):
+        self.scrabble_ai.threshold = threshold
         print("In GameBoardFrame, setting threshold to {}".format(threshold))
 
     def set_letter_played(self, row, col, letter):

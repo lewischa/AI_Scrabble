@@ -116,7 +116,7 @@ class ScrabbleTileBag(object):
             self.bag = self.bag + tiles_to_discard
             random.shuffle(self.bag)
             return new_tiles
-
+    
 class ScrabbleTile(object):
     """Represents a Scrabble tile
 
