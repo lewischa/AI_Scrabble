@@ -276,11 +276,11 @@ class GamePageFrame(Frame):
             self.board.reset_letters_played()
             self.rack.reset_letters(letters)
             self.rack.draw_rack(letters)
+            print("Score: {}".format(score))
 	    word = self.board.scrabble_ai.play_hand()
             # self.board.scrabble_board.play_hand(word.get_letters_by_coord())
             self.place_word(word.get_letters_by_coord())
             self.score_area.set_ai_score(self.board.scrabble_ai.get_score())
-            print("Score: {}".format(score))
 
     def reset_hand(self):
         print("You reset the hand")

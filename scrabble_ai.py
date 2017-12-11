@@ -19,6 +19,8 @@ class ScrabbleAI(Player):
         super(ScrabbleAI, self).__init__(board, tile_bag)
         self.dfa = dfa
         self.threshold = threshold
+        self.indexes_horizontal = []
+        self.indexes_vertical = []
 
     def play_hand(self):
         """ This is an overloaded function of the parent, Player
@@ -27,7 +29,7 @@ class ScrabbleAI(Player):
         AI's perspective
         """
         word = self.find_acceptable_word([tile.get_letter() for tile in self.tiles])
-        super(ScrabbleAI, self).release_and_draw_tiles(word.get_letters_by_coord())
+        super(ScrabbleAI, self).release_and_draw_tiles([l for l in word.get_letters_by_coord().values()])
         super(ScrabbleAI, self).increment_score(word.get_score())
         return word
 
@@ -39,7 +41,7 @@ class ScrabbleAI(Player):
         """
 
         best_word = Word("", {}, 0)
-
+        print("Number of anchor coords, {}".format(len(self.scrabble_board.anchor_coords)))
         for coord in self.scrabble_board.anchor_coords :
 
             r = coord[0]
@@ -48,10 +50,14 @@ class ScrabbleAI(Player):
             if not self.scrabble_board.player_board[r][c]:
                 word = self.find_words_for_anchor((r, c), letters)
                 if word.get_score() > self.threshold:
-                    # best_word = word
+                    self.indexes_horizontal[:] = []
+                    self.indexes_vertical[:] = []
                     return word
-
-
+                if word > best_word:
+                    best_word = word
+         
+        self.indexes_horizontal[:] = []
+        self.indexes_vertical[:] = []
         return best_word
 
     def find_words_for_anchor(self, coord, letters):
@@ -299,8 +305,6 @@ class ScrabbleAI(Player):
                 #
                 #     if word.get_score() > self.threshold:
                 if word.get_score() > self.threshold and word.get_word():
-                    if word > best_word:
-                        best_word = word
                     return word
 
                     # best_word = word
@@ -322,6 +326,9 @@ class ScrabbleAI(Player):
         for i in range(0, len(letters)):
             if self.scrabble_board.player_board[row][col - i]:
                 continue
+            if (row, col - i) in self.indexes_horizontal:
+                continue
+            self.indexes_horizontal.append((row, col - i))
             word = self.get_word_right(row, col - i, letters, self.get_contiguous_block_left((row, col - i)), {}, col)
             if word > best_word:
                 best_word = word
@@ -336,8 +343,11 @@ class ScrabbleAI(Player):
         """
         best_word = Word("", {}, 0)
         for i in range(0, len(letters)):
-            if self.scrabble_board.player_board[row-i][col]:
+            if self.scrabble_board.is_played(row - i, col):
                 continue
+            if (row - i, col) in self.indexes_vertical:
+                continue
+            self.indexes_vertical.append((row -i, col))
             word = self.get_word_down(row - i, col, letters, self.get_contiguous_block_up((row - i, col)), {}, row)
             if word > best_word:
                 best_word = word
