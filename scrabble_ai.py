@@ -46,19 +46,10 @@ class ScrabbleAI(Player):
             c = coord[1]
 
             if not self.board.player_board[r][c]:
-
-                rword = self.get_word_right(r, c, letters, self.get_contiguous_block_left((r, c)), {}, -1)
-
-                if rword > best_word and word.get_word():
-
-                    print("New horizontal word, {}, is better than old word, {}.".format(word, best_word))
-                    best_word = rword
-
-                dword = self.get_word_down(r, c, letters, self.get_contiguous_block_up((r, c)), {}, -1)
-
-                if dword > best_word and dword.get_word():
-
-                    best_word = dword
+                word = find_words_for_anchor((r, c), letters)
+                if word > best_word:
+                    best_word = word
+		    
 
         return best_word
 
