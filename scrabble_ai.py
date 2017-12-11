@@ -19,11 +19,11 @@ class ScrabbleAI(Player):
         super(ScrabbleAI, self).__init__(board, tile_bag)
         self.dfa = dfa
         self.threshold = threshold
-        
+
     def play_hand(self):
         """ This is an overloaded function of the parent, Player
 
-        This function will take care of playing a hand from the 
+        This function will take care of playing a hand from the
         AI's perspective
         """
         word = self.find_acceptable_word([tile.get_letter() for tile in self.tiles])
@@ -37,7 +37,7 @@ class ScrabbleAI(Player):
         that exist in anchor coordinates until a word is found that
         beats the threshold
         """
-    
+
         best_word = Word("", {}, 0)
 
         for coord in self.scrabble_board.anchor_coords :
@@ -47,9 +47,10 @@ class ScrabbleAI(Player):
 
             if not self.scrabble_board.player_board[r][c]:
                 word = self.find_words_for_anchor((r, c), letters)
-                if word > best_word:
-                    best_word = word
-		    
+                if word.get_score() > self.threshold:
+                    # best_word = word
+                    return word
+
 
         return best_word
 
@@ -73,7 +74,7 @@ class ScrabbleAI(Player):
                 if best_word.get_score() > self.threshold:
                     return best_word
         return best_word
-            
+
 
     def get_contiguous_block_down(self, coord):
         """ This is a helper function to find a chunk of letters next to coordinate
@@ -109,7 +110,7 @@ class ScrabbleAI(Player):
         contig_block = ""
         row = coord[0]
         col = coord[1] + 1
-        
+
         #guard for unreachable rows/cols
         if row > scrabble.MAX_LENGTH or col > scrabble.MAX_LENGTH or row < 0 or col < 0:
 
@@ -220,17 +221,20 @@ class ScrabbleAI(Player):
                     score = self.scrabble_board.get_hand_legality_by_score(modified_letter_dict)
                     if score > best_word.get_score() and state + letter != '':
                         best_word = Word(state + letter, modified_letter_dict, score)
-        
+
                     if score >= self.threshold:
                         return best_word
-    
+
                 word = self.get_word_right(row, col + 1, letters[:slice_except] + letters[slice_except+1:], state + letter, modified_letter_dict, end_col)
 
-                if word > best_word and word.get_word():
-
-                    if word.get_score() > self.threshold:
-                        return word
-                    best_word = word
+                # if word > best_word and word.get_word():
+                #
+                #     if word.get_score() > self.threshold:
+                if word.get_score() > self.threshold and word.get_word():
+                    if word > best_word:
+                        best_word = word
+                    return word
+                    # best_word = word
 
             except KeyError:
                 a = 0
@@ -291,15 +295,19 @@ class ScrabbleAI(Player):
 
                 word = self.get_word_down(row + 1, col, letters[:slice_except] + letters[slice_except+1:], state + letter, modified_letter_dict, end_row)
 
-                if word > best_word:
+                # if word > best_word:
+                #
+                #     if word.get_score() > self.threshold:
+                if word.get_score() > self.threshold and word.get_word():
+                    if word > best_word:
+                        best_word = word
+                    return word
 
-                    if word.get_score() > self.threshold:
-                        return word
-        
-                    best_word = word
+                    # best_word = word
 
             except KeyError:
-                print("{} not found as DFA entry".format(state+letter))
+                # print("{} not found as DFA entry".format(state+letter))
+                pass
 
             slice_except += 1
 

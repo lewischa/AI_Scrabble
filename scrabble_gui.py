@@ -255,10 +255,11 @@ class GamePageFrame(Frame):
             color = self.board.tile_label_by_coords[row, col].cget('bg').lower()
             self.board.tile_label_by_coords[row, col].configure(bg='blue',
                                                                 text=value.upper())
-            self.board.set_letter_played(row, col, value.upper())
-            self.board.scrabble_board.set_availability(row, col, False)
+            # self.board.set_letter_played(row, col, value.upper())
+            # self.board.scrabble_board.set_availability(row, col, False)
+        print("Playing hand with letters_by_coord: {}".format(letters_by_coord))
         self.board.scrabble_board.play_hand(letters_by_coord)
-            
+
     def human_play_hand(self):
         letters_by_coord = self.board.get_letters_by_coord()
         letters_by_coord = {
@@ -276,7 +277,7 @@ class GamePageFrame(Frame):
             self.rack.reset_letters(letters)
             self.rack.draw_rack(letters)
 	    word = self.board.scrabble_ai.play_hand()
-            self.board.scrabble_board.play_hand(word.get_letters_by_coord())
+            # self.board.scrabble_board.play_hand(word.get_letters_by_coord())
             self.place_word(word.get_letters_by_coord())
             self.score_area.set_ai_score(self.board.scrabble_ai.get_score())
             print("Score: {}".format(score))
