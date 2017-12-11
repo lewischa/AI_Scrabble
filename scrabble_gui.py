@@ -13,6 +13,15 @@ SCORE_AREA_FONT = ("Verdana", 14, "bold")
 CLICK_CURSOR = "hand2"
 INVALID_COLOR = "#ff0000"
 VALID_COLOR = "#009300"
+COLORS = {
+    'background': "#E5E6E8"
+}
+AI_THRESHOLD = {
+    0: 10,
+    1: 25,
+    2: 50,
+    3: 1000
+}
 
 class ScrabbleApp(Tk):
 
@@ -50,8 +59,10 @@ class ScrabbleApp(Tk):
         self.menus['file'] = file_menu
         self.menus['main'] = main_menu
 
-    def show_frame(self, cont):
+    def show_frame(self, cont, threshold=None):
         frame = self.frames[cont]
+        if threshold:
+            frame.set_threshold(threshold)
         frame.tkraise()
         self.active_frame = cont
         reset_option_idx = self.menus['file'].index('Reset')
@@ -76,16 +87,61 @@ class ScrabbleApp(Tk):
 class WelcomePage(Frame):
 
     def __init__(self, parent, controller):
-        Frame.__init__(self, parent, bg='#E5E6E8')
-        label = Label(self, text="Welcome to Scrabble!", bg='#E5E6E8')
+        Frame.__init__(self, parent, bg=COLORS['background'])
+        label = Label(self,
+                      text="Welcome to Scrabble!",
+                      bg=COLORS['background'])
         label.pack(pady=10, padx=10)
+        self.easy = IntVar()
+        self.medium = IntVar()
+        self.hard = IntVar()
+        self.master = IntVar()
+        self.checkbox_handles = [self.easy, self.medium, self.hard, self.master]
 
         start_button = ttk.Button(self,
                                   text="Play",
                                   command=lambda: \
-                                    controller.show_frame(GamePageFrame),
+                                    controller.show_frame(
+                                        GamePageFrame,
+                                        threshold=\
+                                            AI_THRESHOLD[
+                                                self.get_checked_index()
+                                            ]),
                                   cursor=CLICK_CURSOR)
         start_button.pack()
+
+        difficulty_frame = Frame(self, width=100, bg=COLORS['background'])
+        difficulty_frame.pack()
+
+        easy_checkbox = ttk.Checkbutton(
+                            difficulty_frame,
+                            text="Easy",
+                            variable=self.easy,
+                            command=lambda selected=0: \
+                                self.toggle_checkboxes(selected))
+        medium_checkbox = ttk.Checkbutton(
+                            difficulty_frame,
+                            text="Medium",
+                            variable=self.medium,
+                            command=lambda selected=1: \
+                                self.toggle_checkboxes(selected))
+        hard_checkbox = ttk.Checkbutton(
+                            difficulty_frame,
+                            text="Hard",
+                            variable=self.hard,
+                            command=lambda selected=2: \
+                                self.toggle_checkboxes(selected))
+        master_checkbox = ttk.Checkbutton(
+                            difficulty_frame,
+                            text="Master",
+                            variable=self.master,
+                            command=lambda selected=3: \
+                                self.toggle_checkboxes(selected))
+        easy_checkbox.pack(anchor="w")
+        medium_checkbox.pack(anchor="w")
+        hard_checkbox.pack(anchor="w")
+        master_checkbox.pack(anchor="w")
+        self.easy.set(1)
 
         quit_button = ttk.Button(self,
                                  text="Quit",
@@ -93,17 +149,27 @@ class WelcomePage(Frame):
                                  cursor=CLICK_CURSOR)
         quit_button.pack(pady=(10,0))
 
+    def toggle_checkboxes(self, selected):
+        for i, handle in enumerate(self.checkbox_handles):
+            if i != selected:
+                handle.set(0)
+
+    def get_checked_index(self):
+        for i, handle in enumerate(self.checkbox_handles):
+            if handle.get() == 1:
+                return i
+
 class GamePageFrame(Frame):
 
     def __init__(self, parent, controller):
-        Frame.__init__(self, parent, bg='#E5E6E8')
+        Frame.__init__(self, parent, bg=COLORS['background'])
         self.configure_ui()
         self.controller = controller
 
     def configure_ui(self):
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
-        label = Label(self, text="This is the game", bg='#E5E6E8')
+        label = Label(self, text="This is the game", bg=COLORS['background'])
         label.grid(pady=10, padx=10, row=0, column=0, columnspan=3, sticky="ew")
 
         back_button = ttk.Button(self,
@@ -114,8 +180,6 @@ class GamePageFrame(Frame):
 
         quit_button = ttk.Button(self, text="Quit", command=self.quit)
         quit_button.grid(row=2, column=0, columnspan=3)
-
-        # self.rack = RackFrame(self, width=400, height=100, bg='blue')
 
         self.board = GameBoardFrame(self, height=400, width=400)
 
@@ -132,6 +196,8 @@ class GamePageFrame(Frame):
 
         self.control_area = ControlAreaFrame(self, width=100,
                                              height=400, bg='blue')
+    def set_threshold(self, threshold):
+        self.board.set_threshold(threshold)
 
     def set_word_status(self, score=0, reset=False):
         if reset:
@@ -265,6 +331,9 @@ class GameBoardFrame(Frame):
             self.tile_frames.append(row_frame_list)
 
         self.grid(padx=10, pady=10, row=3, column=1)
+
+    def set_threshold(self, threshold):
+        print("In GameBoardFrame, setting threshold to {}".format(threshold))
 
     def set_letter_played(self, row, col, letter):
         self.letters_played_in_hand[row, col] = letter
