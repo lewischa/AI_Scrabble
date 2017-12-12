@@ -41,7 +41,6 @@ class ScrabbleAI(Player):
         """
 
         best_word = Word("", {}, 0)
-        print("Number of anchor coords, {}".format(len(self.scrabble_board.anchor_coords)))
         for coord in self.scrabble_board.anchor_coords :
 
             r = coord[0]
@@ -50,7 +49,6 @@ class ScrabbleAI(Player):
             if not self.scrabble_board.player_board[r][c]:
                 word = self.find_words_for_anchor((r, c), letters)
                 if word.get_score() > self.threshold:
-                    print("bouncing early")
                     self.indexes_horizontal[:] = []
                     self.indexes_vertical[:] = []
                     return word
@@ -226,7 +224,6 @@ class ScrabbleAI(Player):
                 if col >= end_col:
 
                     score = self.scrabble_board.get_hand_legality_by_score(modified_letter_dict)
-                    print("testing word: {}, with score: {}".format(state+letter, score))
                     if score > best_word.get_score() and state + letter != '':
                         best_word = Word(state + letter, modified_letter_dict, score)
 
@@ -323,7 +320,6 @@ class ScrabbleAI(Player):
                 continue
             if (row, col - i) in self.indexes_horizontal:
                 continue
-            print("checking for word at: ({}, {})".format(row, col-i))
             self.indexes_horizontal.append((row, col - i))
             word = self.get_word_right(row, col - i, letters, self.get_contiguous_block_left((row, col - i)), {}, col)
             if word > best_word:
@@ -343,7 +339,6 @@ class ScrabbleAI(Player):
                 continue
             if (row - i, col) in self.indexes_vertical:
                 continue
-            print("checking for word at: ({}, {})".format(row - i, col))
             self.indexes_vertical.append((row -i, col))
             word = self.get_word_down(row - i, col, letters, self.get_contiguous_block_up((row - i, col)), {}, row)
             if word > best_word:
