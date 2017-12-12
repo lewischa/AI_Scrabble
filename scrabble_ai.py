@@ -50,6 +50,7 @@ class ScrabbleAI(Player):
             if not self.scrabble_board.player_board[r][c]:
                 word = self.find_words_for_anchor((r, c), letters)
                 if word.get_score() > self.threshold:
+                    print("bouncing early")
                     self.indexes_horizontal[:] = []
                     self.indexes_vertical[:] = []
                     return word
@@ -69,9 +70,9 @@ class ScrabbleAI(Player):
         c = coord[1]
         best_word = Word("", {}, 0)
         if not self.scrabble_board.is_played(r, c):
-            word = self.get_word_left(r, c, letters)
-            if word > best_word:
-                best_word = word
+            lword = self.get_word_left(r, c, letters)
+            if lword > best_word:
+                best_word = lword
                 if best_word.get_score() > self.threshold:
                     return best_word
             word = self.get_word_up(r, c, letters)
@@ -203,15 +204,15 @@ class ScrabbleAI(Player):
                 down = self.get_contiguous_block_down((row, col))
                 up = self.get_contiguous_block_up((row, col))
                 right = self.get_contiguous_block_right((row, col))
-                if down:
+                if down != "":
 
-                    if up:
+                    if up != "":
                         if not self.dfa.accepts(up + letter + down):
                             continue
                     if not self.dfa.accepts(letter + down):
                         continue
 
-                if up:
+                if up != "":
 
                     if not self.dfa.accepts(up + letter):
                         continue
@@ -225,23 +226,21 @@ class ScrabbleAI(Player):
                 if col >= end_col:
 
                     score = self.scrabble_board.get_hand_legality_by_score(modified_letter_dict)
+                    print("testing word: {}, with score: {}".format(state+letter, score))
                     if score > best_word.get_score() and state + letter != '':
                         best_word = Word(state + letter, modified_letter_dict, score)
 
                     if score >= self.threshold:
                         return best_word
 
-                word = self.get_word_right(row, col + 1, letters[:slice_except] + letters[slice_except+1:], state + letter, modified_letter_dict, end_col)
+                word = self.get_word_right(row, col + 1, letters[:slice_except] + letters[slice_except+1:], state + letter, dict(modified_letter_dict), end_col)
 
-                # if word > best_word and word.get_word():
-                #
-                #     if word.get_score() > self.threshold:
                 if word.get_score() > self.threshold and word.get_word():
-                    if word > best_word:
-                        best_word = word
                     return word
                     # best_word = word
-
+                
+                if word > best_word:
+                    best_word = word
             except KeyError:
                 a = 0
             slice_except += 1
@@ -299,18 +298,14 @@ class ScrabbleAI(Player):
                     if score >= self.threshold:
                         return best_word
 
-                word = self.get_word_down(row + 1, col, letters[:slice_except] + letters[slice_except+1:], state + letter, modified_letter_dict, end_row)
+                word = self.get_word_down(row + 1, col, letters[:slice_except] + letters[slice_except+1:], state + letter, dict(modified_letter_dict), end_row)
 
-                # if word > best_word:
-                #
-                #     if word.get_score() > self.threshold:
                 if word.get_score() > self.threshold and word.get_word():
                     return word
-
-                    # best_word = word
+                if word > best_word:
+                    best_word = word
 
             except KeyError:
-                # print("{} not found as DFA entry".format(state+letter))
                 pass
 
             slice_except += 1
@@ -324,10 +319,11 @@ class ScrabbleAI(Player):
         """
         best_word = Word("", {}, 0)
         for i in range(0, len(letters)):
-            if self.scrabble_board.player_board[row][col - i]:
+            if self.scrabble_board.is_played(row, col - i):
                 continue
             if (row, col - i) in self.indexes_horizontal:
                 continue
+            print("checking for word at: ({}, {})".format(row, col-i))
             self.indexes_horizontal.append((row, col - i))
             word = self.get_word_right(row, col - i, letters, self.get_contiguous_block_left((row, col - i)), {}, col)
             if word > best_word:
@@ -347,6 +343,7 @@ class ScrabbleAI(Player):
                 continue
             if (row - i, col) in self.indexes_vertical:
                 continue
+            print("checking for word at: ({}, {})".format(row - i, col))
             self.indexes_vertical.append((row -i, col))
             word = self.get_word_down(row - i, col, letters, self.get_contiguous_block_up((row - i, col)), {}, row)
             if word > best_word:
