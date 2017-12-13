@@ -17,6 +17,8 @@ class ScrabbleAI(Player):
     """
     def __init__(self, board, tile_bag, dfa, threshold):
         super(ScrabbleAI, self).__init__(board, tile_bag)
+        print("Current AI tiles: ")
+        print([tile.get_letter() for tile in self.tiles])
         self.dfa = dfa
         self.threshold = threshold
         self.indexes_horizontal = []
@@ -31,6 +33,8 @@ class ScrabbleAI(Player):
         word = self.find_acceptable_word([tile.get_letter() for tile in self.tiles])
         super(ScrabbleAI, self).release_and_draw_tiles([l for l in word.get_letters_by_coord().values()])
         super(ScrabbleAI, self).increment_score(word.get_score())
+        print("Current AI tiles: ")
+        print([tile.get_letter() for tile in self.tiles])
         return word
 
     def find_acceptable_word(self, letters):
@@ -46,7 +50,7 @@ class ScrabbleAI(Player):
             r = coord[0]
             c = coord[1]
 
-            if not self.scrabble_board.player_board[r][c]:
+            if not self.scrabble_board.is_played(r, c):
                 word = self.find_words_for_anchor((r, c), letters)
                 if word.get_score() > self.threshold:
                     self.indexes_horizontal[:] = []
@@ -97,7 +101,7 @@ class ScrabbleAI(Player):
             return ""
 
         #loop through in downward direction and add to word if not ''
-        while row < scrabble.MAX_LENGTH and self.scrabble_board.player_board[row][col] != '' :
+        while row <= scrabble.MAX_LENGTH and self.scrabble_board.is_played(row, col) :
 
             contig_block += self.scrabble_board.player_board[row][col]
             row += 1
@@ -122,7 +126,7 @@ class ScrabbleAI(Player):
             return ""
 
         #loop through in downward direction and add to word if not ''
-        while col < scrabble.MAX_LENGTH and self.scrabble_board.player_board[row][col] != '':
+        while col <= scrabble.MAX_LENGTH and self.scrabble_board.is_played(row, col):
 
             contig_block += self.scrabble_board.player_board[row][col]
             col += 1
@@ -144,7 +148,7 @@ class ScrabbleAI(Player):
             return ""
 
         #loop through in upward direction and add to word if not ''
-        while row > 0 and self.scrabble_board.player_board[row][col] != '':
+        while row >= 0 and self.scrabble_board.is_played(row, col):
 
             contig_block = self.scrabble_board.player_board[row][col] + contig_block
             row -= 1
@@ -166,7 +170,7 @@ class ScrabbleAI(Player):
             return ""
 
         #loop through in leftward direction and add to word if not ''
-        while col > 0 and self.scrabble_board.player_board[row][col] != '':
+        while col >= 0 and self.scrabble_board.is_played(row, col):
             contig_block = self.scrabble_board.player_board[row][col] + contig_block
             col -= 1
 
@@ -191,17 +195,19 @@ class ScrabbleAI(Player):
             return Word("", {}, 0)
 
         best_word = Word("", {}, 0)
-        slice_except = 0
+        if self.scrabble_board.is_played(row, col):
+            return self.get_word_right(row, col + 1, letters, state + self.scrabble_board.player_board[row][col], dict(letters_by_coords), end_col)
+        slice_except = -1
+        down = self.get_contiguous_block_down((row, col))
+        up = self.get_contiguous_block_up((row, col))
+        right = self.get_contiguous_block_right((row, col))
 
         for letter in letters:
-
+            slice_except += 1
             try:
                 self.dfa.dfa[state + letter]
                 modified_letter_dict = dict(letters_by_coords)
                 modified_letter_dict[(row, col)] = letter
-                down = self.get_contiguous_block_down((row, col))
-                up = self.get_contiguous_block_up((row, col))
-                right = self.get_contiguous_block_right((row, col))
                 if down != "":
 
                     if up != "":
@@ -225,14 +231,14 @@ class ScrabbleAI(Player):
 
                     score = self.scrabble_board.get_hand_legality_by_score(modified_letter_dict)
                     if score > best_word.get_score() and state + letter != '':
-                        best_word = Word(state + letter, modified_letter_dict, score)
+                        best_word = Word(state + letter, dict(modified_letter_dict), score)
 
                     if score >= self.threshold:
                         return best_word
 
                 word = self.get_word_right(row, col + 1, letters[:slice_except] + letters[slice_except+1:], state + letter, dict(modified_letter_dict), end_col)
 
-                if word.get_score() > self.threshold and word.get_word():
+                if word.get_score() >= self.threshold and word.get_word():
                     return word
                     # best_word = word
                 
@@ -240,7 +246,6 @@ class ScrabbleAI(Player):
                     best_word = word
             except KeyError:
                 a = 0
-            slice_except += 1
 
         return best_word
 
@@ -252,18 +257,20 @@ class ScrabbleAI(Player):
         if row < 0 or row > scrabble.MAX_LENGTH or col < 0 or col > scrabble.MAX_LENGTH:
             return Word("",{}, 0)
         best_word = Word("", {}, 0)
-        slice_except = 0
-
+        if self.scrabble_board.is_played(row, col):
+            return self.get_word_down(row + 1, col, letters, state + self.scrabble_board.player_board[row][col], dict(letters_by_coords), end_row)
+        slice_except = -1
+        left = self.get_contiguous_block_left((row, col))
+        right = self.get_contiguous_block_right((row, col))
+        down = self.get_contiguous_block_down((row, col))
         for letter in letters:
+            slice_except += 1
 
             try:
 
                 self.dfa.dfa[state + letter]
                 modified_letter_dict = dict(letters_by_coords)
                 modified_letter_dict[(row, col)] = letter
-                left = self.get_contiguous_block_left((row, col))
-                right = self.get_contiguous_block_right((row, col))
-                down = self.get_contiguous_block_down((row, col))
 
                 if right != "":
 
@@ -282,7 +289,8 @@ class ScrabbleAI(Player):
 
                     self.dfa.dfa[state + letter + down]
                     letter += down
-                    col += len(right)
+                    
+                    col += len(down)
 
                 if row >= end_row:
 
@@ -290,7 +298,7 @@ class ScrabbleAI(Player):
 
                     if score > best_word.get_score() and state + letter != '':
 
-                        best_word = Word(state + letter, modified_letter_dict, score)
+                        best_word = Word(state + letter, dict(modified_letter_dict), score)
 
                     if score >= self.threshold:
                         return best_word
@@ -305,7 +313,6 @@ class ScrabbleAI(Player):
             except KeyError:
                 pass
 
-            slice_except += 1
 
         return best_word
 

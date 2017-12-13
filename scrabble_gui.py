@@ -216,7 +216,7 @@ class GamePageFrame(Frame):
             #   placed there)
             letter = self.rack.get_selected_letter()
             if letter is not None:
-                self.board.tile_label_by_coords[row, col].configure(bg='blue',
+                self.board.tile_label_by_coords[row, col].configure(bg='yellow',
                                                                     text=letter)
                 self.board.set_letter_played(row, col, letter)
                 letters_by_coord = {
@@ -253,7 +253,7 @@ class GamePageFrame(Frame):
         for key, value in letters_by_coord.iteritems():
             row, col = key
             color = self.board.tile_label_by_coords[row, col].cget('bg').lower()
-            self.board.tile_label_by_coords[row, col].configure(bg='blue',
+            self.board.tile_label_by_coords[row, col].configure(bg='yellow',
                                                                 text=value.upper())
             # self.board.set_letter_played(row, col, value.upper())
             # self.board.scrabble_board.set_availability(row, col, False)
@@ -277,7 +277,7 @@ class GamePageFrame(Frame):
             self.rack.reset_letters(letters)
             self.rack.draw_rack(letters)
             print("Score: {}".format(score))
-	    word = self.board.scrabble_ai.play_hand()
+            word = self.board.scrabble_ai.play_hand()
             # self.board.scrabble_board.play_hand(word.get_letters_by_coord())
             self.place_word(word.get_letters_by_coord())
             self.score_area.set_ai_score(self.board.scrabble_ai.get_score())
@@ -451,16 +451,16 @@ class RackFrame(Frame):
 
     def select_tile(self, event, tile, letter):
         if self.rack_tiles[tile]['selected']:
-            self.rack.itemconfigure(tile, fill="blue", outline="black", width=1)
+            self.rack.itemconfigure(tile, fill="yellow", outline="black", width=1)
             self.rack_tiles[tile]['selected'] = False
             self.selected_tile = None
             self.selected_letter = None
         else:
-            self.rack.itemconfigure(tile, fill="white", outline="blue", width=3)
+            self.rack.itemconfigure(tile, fill="white", outline="yellow", width=3)
             self.rack_tiles[tile]['selected'] = True
             if self.selected_tile is not None:
                 self.rack.itemconfigure(self.selected_tile,
-                                        fill="blue", outline="black", width=1)
+                                        fill="yellow", outline="black", width=1)
                 self.rack_tiles[self.selected_tile]['selected'] = False
             self.selected_tile = tile
             self.selected_letter = letter
@@ -516,7 +516,7 @@ class RackTile(Canvas):
         final_box = self.get_box_size(temp_box)
         outline = self.parent.create_rectangle(final_box,
                                                outline="black",
-                                               fill="blue")
+                                               fill="yellow")
 
         self.parent.tag_bind(outline, "<ButtonPress-1>",
                              lambda e, box=outline, letter=self.letter: \
